@@ -1,3 +1,4 @@
+
 import os
 import requests
 import feedparser
@@ -75,6 +76,8 @@ def clean_html(text):
     """Nettoie le HTML et les caractères spéciaux."""
     text = re.sub(r'<[^>]+>', '', text)
     text = html.unescape(text)
+    # Supprime les caractères qui cassent Telegram
+    text = re.sub(r'[*_`\[\]()]', '', text)
     text = text.strip()
     return text
 
@@ -127,32 +130,31 @@ def fetch_all_news():
     return all_entries
 
 def format_message(entries):
-    """Formate le message Telegram."""
+    """Formate le message Telegram — sans Markdown pour éviter les erreurs."""
     today = datetime.now().strftime("%d.%m.%Y")
 
-    message = f"🤘 *BRIEF METAL — {today}*\n"
-    message += f"_by @fr3nch\\_wine_\n"
+    message = f"🤘 BRIEF METAL — {today}\n"
+    message += f"by @fr3nch_wine\n"
     message += "━━━━━━━━━━━━━━━━\n\n"
 
     if not entries:
         message += "⚠️ Aucune news trouvée aujourd'hui.\n"
         return message
 
-    # Top 5 news EN
+    # Top 3 news EN + Top 2 news FR
     en_entries = [e for e in entries if e['lang'] == 'EN'][:3]
-    # Top 2 news FR
     fr_entries = [e for e in entries if e['lang'] == 'FR'][:2]
 
     top_entries = en_entries + fr_entries
 
     for i, entry in enumerate(top_entries, 1):
         flag = "🇫🇷" if entry['lang'] == 'FR' else "🌍"
-        message += f"🔴 *{i}. {entry['title']}*\n"
-        message += f"{flag} _{entry['source']}_\n"
-        message += f"[🔗 Lire]({entry['link']})\n\n"
+        message += f"🔴 {i}. {entry['title']}\n"
+        message += f"{flag} {entry['source']}\n"
+        message += f"🔗 {entry['link']}\n\n"
 
     message += "━━━━━━━━━━━━━━━━\n"
-    message += "_Growl And Drink_ 🍷"
+    message += "Growl And Drink 🍷"
 
     return message
 
@@ -163,8 +165,7 @@ def send_telegram(message):
     payload = {
         "chat_id": TELEGRAM_CHAT_ID,
         "text": message,
-        "parse_mode": "Markdown",
-        "disable_web_page_preview": False
+        "disable_web_page_preview": True
     }
 
     response = requests.post(url, json=payload)
